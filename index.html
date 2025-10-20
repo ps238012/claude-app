@@ -1,26 +1,146 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>横スクロールアクションゲーム</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>神経衰弱</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+  </style>
 </head>
 <body>
-    <div id="gameContainer">
-        <canvas id="gameCanvas" width="800" height="400"></canvas>
-        <div id="gameInfo">
-            スコア: <span id="score">0</span> | コイン: <span id="coinCount">0</span> / 10 | 残り時間: <span id="timeLeft">60</span>秒
+  <div id="app"></div>
+
+  <script>
+    const symbols = ['🌸', '🌺', '🌻', '🌼', '🌷', '🌹', '🍎', '🍊'];
+    let cards = [];
+    let flipped = [];
+    let matched = [];
+    let turns = 0;
+    let score = 0;
+    let gameOver = false;
+    let won = false;
+
+    function initializeGame() {
+      cards = [...symbols, ...symbols]
+        .sort(() => Math.random() - 0.5)
+        .map((symbol, index) => ({ id: index, symbol }));
+      flipped = [];
+      matched = [];
+      turns = 0;
+      score = 0;
+      gameOver = false;
+      won = false;
+      render();
+    }
+
+    function handleCardClick(id) {
+      if (flipped.length === 2 || flipped.includes(id) || matched.includes(id) || gameOver) {
+        return;
+      }
+
+      flipped.push(id);
+      render();
+
+      if (flipped.length === 2) {
+        const [first, second] = flipped;
+        const firstCard = cards.find(card => card.id === first);
+        const secondCard = cards.find(card => card.id === second);
+
+        const newTurns = turns + 1;
+
+        if (firstCard.symbol === secondCard.symbol) {
+          setTimeout(() => {
+            matched.push(first, second);
+            flipped = [];
+            score++;
+            turns = newTurns;
+            if (matched.length === 16) {
+              won = true;
+              gameOver = true;
+            } else if (turns >= 10) {
+              gameOver = true;
+            }
+            render();
+          }, 600);
+        } else {
+          setTimeout(() => {
+            flipped = [];
+            turns = newTurns;
+            if (turns >= 10) {
+              gameOver = true;
+            }
+            render();
+          }, 1000);
+        }
+      }
+    }
+
+    function render() {
+      const app = document.getElementById('app');
+      
+      app.innerHTML = `
+        <div class="min-h-screen bg-gradient-to-br from-purple-400 via-pink-300 to-blue-300 flex flex-col items-center justify-center p-8">
+          <h1 class="text-4xl font-bold text-white mb-6 drop-shadow-lg">神経衰弱</h1>
+          <div class="bg-white bg-opacity-90 rounded-lg p-6 mb-6 shadow-xl">
+            <div class="flex gap-8 text-lg font-semibold">
+              <div>残り回数: <span class="text-blue-600">${10 - turns}</span></div>
+              <div>得点: <span class="text-green-600">${score}</span> / 8</div>
+            </div>
+          </div>
+
+          ${gameOver ? `
+            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div class="bg-white rounded-2xl p-12 text-center shadow-2xl">
+                ${won ? `
+                  <div class="text-8xl mb-4">🏆</div>
+                  <h2 class="text-4xl font-bold text-yellow-500 mb-4">おめでとう！</h2>
+                  <p class="text-xl text-gray-700 mb-6">全てのペアを見つけました！</p>
+                ` : `
+                  <div class="text-8xl mb-4">😢</div>
+                  <h2 class="text-4xl font-bold text-red-500 mb-4">あなたの負け</h2>
+                  <p class="text-xl text-gray-700 mb-6">10回以内にクリアできませんでした</p>
+                `}
+                <button
+                  onclick="initializeGame()"
+                  class="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-8 py-3 rounded-full text-lg font-semibold hover:from-blue-600 hover:to-purple-600 transition-all"
+                >
+                  もう一度プレイ
+                </button>
+              </div>
+            </div>
+          ` : ''}
+
+          <div class="grid grid-cols-4 gap-4">
+            ${cards.map(card => `
+              <div
+                onclick="handleCardClick(${card.id})"
+                class="w-24 h-24 flex items-center justify-center text-5xl rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-105 ${
+                  flipped.includes(card.id) || matched.includes(card.id)
+                    ? 'bg-white shadow-lg'
+                    : 'bg-gradient-to-br from-indigo-500 to-purple-600 shadow-md'
+                } ${matched.includes(card.id) ? 'opacity-50' : ''}"
+              >
+                ${flipped.includes(card.id) || matched.includes(card.id) ? card.symbol : ''}
+              </div>
+            `).join('')}
+          </div>
+
+          <button
+            onclick="initializeGame()"
+            class="mt-8 bg-white text-purple-600 px-6 py-3 rounded-full font-semibold hover:bg-purple-50 transition-all shadow-lg"
+          >
+            ゲームをリセット
+          </button>
         </div>
-        <div id="controls">
-            スペースキー または 画面タップ でジャンプ！（2段ジャンプ可能）
-        </div>
-        <div id="gameOverText" class="gameOver" style="display:none;">
-            ゲームオーバー！
-            <br>
-            <button onclick="restartGame()">もう一度プレイ</button>
-        </div>
-    </div>
-    <script src="game.js"></script>
+      `;
+    }
+
+    // ゲーム初期化
+    initializeGame();
+  </script>
 </body>
 </html>
